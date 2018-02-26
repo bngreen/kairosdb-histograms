@@ -15,11 +15,20 @@
  */
 package com.arpnetworking.kairosdb.aggregators;
 
+import com.arpnetworking.kairosdb.HistogramDataPoint;
+import com.arpnetworking.kairosdb.HistogramDataPointFactory;
 import com.google.inject.Inject;
+import org.kairosdb.core.DataPoint;
+import org.kairosdb.core.aggregator.RangeAggregator;
 import org.kairosdb.core.aggregator.annotation.AggregatorName;
 import org.kairosdb.core.aggregator.annotation.AggregatorProperty;
 import org.kairosdb.core.datapoints.DoubleDataPointFactory;
 import org.kairosdb.core.exception.KairosDBException;
+
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Aggregator that computes the standard deviation value of histograms.
@@ -34,7 +43,7 @@ import org.kairosdb.core.exception.KairosDBException;
                 @AggregatorProperty(name = "align_start_time", type = "boolean")
         }
 )
-public class HistogramStdDevAggregator extends HistogramVarianceAggregator {
+public class HistogramStdDevAggregator extends RangeAggregator {
     /**
      * Public constructor.
      *
@@ -43,7 +52,7 @@ public class HistogramStdDevAggregator extends HistogramVarianceAggregator {
      */
     @Inject
     public HistogramStdDevAggregator(final DoubleDataPointFactory dataPointFactory) throws KairosDBException {
-        super(dataPointFactory);
+        _dataPointFactory = dataPointFactory;
     }
 
     @Override
@@ -51,11 +60,44 @@ public class HistogramStdDevAggregator extends HistogramVarianceAggregator {
         return new HistogramStdDevDataPointAggregator();
     }
 
-    private final class HistogramStdDevDataPointAggregator extends HistogramVarianceDataPointAggregator {
+    @Override
+    public boolean canAggregate(final String groupType) {
+        return HistogramDataPointFactory.GROUP_TYPE.equals(groupType);
+    }
+
+    @Override
+    public String getAggregatedGroupType(final String groupType) {
+        return _dataPointFactory.getGroupType();
+    }
+
+    private final DoubleDataPointFactory _dataPointFactory;
+
+    private final class HistogramStdDevDataPointAggregator implements RangeSubAggregator {
 
         @Override
-        protected double computeFinalValue(final long count, final double mean, final double m2) {
-            return Math.sqrt(super.computeFinalValue(count, mean, m2));
+        public Iterable<DataPoint> getNextDataPoints(final long returnTime, final Iterator<DataPoint> dataPointRange) {
+            long count = 0;
+            double mean = 0;
+            double m2 = 0;
+            while (dataPointRange.hasNext()) {
+                final DataPoint dp = dataPointRange.next();
+                if (dp instanceof HistogramDataPoint) {
+                    final HistogramDataPoint hist = (HistogramDataPoint) dp;
+                    final TreeMap<Double, Integer> map = hist.getMap();
+                    if (map != null) {
+                        for (Map.Entry<Double, Integer> entry : map.entrySet()) {
+                            final int n = entry.getValue();
+                            final double x = entry.getKey();
+                            count += n;
+                            final double delta = x - mean;
+                            mean += ((double) n / count) * delta;
+                            m2 += n * delta * (x - mean);
+                        }
+                    }
+                }
+            }
+
+            return Collections.singletonList(_dataPointFactory.createDataPoint(returnTime, Math.sqrt(m2 / (count - 1))));
         }
     }
 }

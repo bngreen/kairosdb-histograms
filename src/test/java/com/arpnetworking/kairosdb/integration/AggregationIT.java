@@ -126,17 +126,6 @@ public class AggregationIT {
         testAggregate("sum", MULTI_HIST_TEST_DATA, 120d);
     }
 
-    // **** variance aggregator ***
-    @Test
-    public void testVarianceAggregatorSingle() throws IOException, JSONException {
-        testAggregate("hvar", SINGLE_HIST_TEST_DATA, 13d);
-    }
-
-    @Test
-    public void testVarianceAggregatorMulti() throws IOException, JSONException {
-        testAggregate("hvar", MULTI_HIST_TEST_DATA, 628d / 11d);
-    }
-
     // **** standard deviation aggregator ***
     @Test
     public void testStdDevAggregatorSingle() throws IOException, JSONException {
