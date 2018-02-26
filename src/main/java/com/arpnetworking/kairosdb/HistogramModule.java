@@ -29,6 +29,7 @@ import com.arpnetworking.kairosdb.aggregators.HistogramMergeAggregator;
 import com.arpnetworking.kairosdb.aggregators.HistogramMinAggregator;
 import com.arpnetworking.kairosdb.aggregators.HistogramPercentileAggregator;
 import com.arpnetworking.kairosdb.aggregators.HistogramSumAggregator;
+import com.arpnetworking.kairosdb.aggregators.HistogramVarianceAggregator;
 import com.google.common.collect.Lists;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -78,6 +79,8 @@ public class HistogramModule extends AbstractModule {
 
         bind(HistogramMergeAggregator.class);
         bind(HistogramApdexAggregator.class);
+
+        bind(HistogramVarianceAggregator.class);
     }
 
     @Provides
